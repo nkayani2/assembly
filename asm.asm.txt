@@ -1,0 +1,186 @@
+.386
+.model flat,stdcall
+.stack 4096
+INCLUDE Irvine32.inc
+
+.data
+Contact STRUCT
+    number DWORD ?
+Contact ENDS
+maxContacts DWORD 11
+contactCount DWORD 5
+
+contacts Contact <03005131945>
+         Contact <03319757892>
+         Contact <03125226148>
+         Contact <03485377507>
+         Contact <03497417477>
+         DWORD 5 * SIZEOF Contact DUP (?)
+
+
+menuText BYTE "1. Display Contacts", 0Dh, 0Ah, 
+                "2. Add Contact", 0Dh, 0Ah, 
+                "3. Delete Contact", 0Dh, 0Ah, 
+                "4. Search Contact", 0Dh, 0Ah, 
+                "5. Exit", 0Dh, 0Ah, 0
+numberPrompt BYTE "Enter Number: ", 0
+deletePrompt BYTE "Enter Number to Delete: ", 0
+searchPrompt BYTE "Enter Number to Search: ", 0
+notFoundMsg BYTE "Contact not found!", 0
+noSpaceMsg BYTE "No space for new contact!", 0
+
+tempNumber DWORD ?
+
+.code
+main PROC
+    call Clrscr
+    call showMenu
+    exit
+main ENDP
+
+showMenu PROC
+    mov edx, OFFSET menuText
+    call WriteString
+
+    call ReadInt
+    cmp eax, 1
+    je displayContacts
+    cmp eax, 2
+    je addContact
+    cmp eax, 3
+    je deleteContact
+    cmp eax, 4
+    je searchContact
+    cmp eax, 5
+    je quit
+    jmp showMenu
+showMenu ENDP
+
+displayContacts PROC
+    mov ecx, contactCount
+    mov esi, OFFSET contacts
+
+displayLoop:
+    cmp ecx, 0
+    je endDisplay
+
+    mov eax, [esi].Contact.number
+    call WriteDec
+    call Crlf
+    add esi, SIZEOF Contact
+
+    loop displayLoop
+
+endDisplay:
+    call Crlf
+    call showMenu
+    ret
+displayContacts ENDP
+
+addContact PROC
+    mov eax, contactCount
+    cmp eax, maxContacts
+    jae spaceFull
+
+    ; Enter number
+    mov edx, OFFSET numberPrompt
+    call WriteString
+    call ReadInt
+    mov ebx, contactCount
+    imul ebx, SIZEOF Contact
+    mov esi, OFFSET contacts
+    add esi, ebx
+    mov [esi].Contact.number, eax
+    inc contactCount
+    call showMenu
+    ret
+
+spaceFull:
+    mov edx, OFFSET noSpaceMsg
+    call WriteString
+    call Crlf
+    call showMenu
+    ret
+addContact ENDP
+
+deleteContact PROC
+    mov edx, OFFSET deletePrompt
+    call WriteString
+    call ReadInt
+    mov tempNumber, eax
+
+    mov esi, OFFSET contacts
+    mov ecx, contactCount
+
+
+
+deleteLoop:
+    mov eax, [esi].Contact.number
+    cmp eax, tempNumber
+    je foundDelete
+
+    add esi, SIZEOF Contact
+    loop deleteLoop
+
+    ; If not found
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    call Crlf
+    call showMenu
+    ret
+
+foundDelete:
+    dec contactCount
+    mov edi, esi
+    add edi, SIZEOF Contact
+
+shiftLoop:
+    cmp ecx, 0
+    je endShift
+    mov eax, [edi].Contact.number
+    mov [esi].Contact.number, eax
+    add esi, SIZEOF Contact
+    add edi, SIZEOF Contact
+    dec ecx
+    jmp shiftLoop
+
+endShift:
+    call Crlf
+    call showMenu
+    ret
+deleteContact ENDP
+
+searchContact PROC
+    mov edx, OFFSET searchPrompt
+    call WriteString
+    call ReadInt
+    mov tempNumber, eax
+
+    mov esi, OFFSET contacts
+    mov ecx, contactCount
+
+searchLoop:
+    mov eax, [esi].Contact.number
+    cmp eax, tempNumber
+    je foundSearch
+    add esi, SIZEOF Contact
+    loop searchLoop
+
+    mov edx, OFFSET notFoundMsg
+    call WriteString
+    call Crlf
+    call showMenu
+    ret
+
+foundSearch:
+    call WriteDec
+    call Crlf
+    call showMenu
+    ret
+searchContact ENDP
+
+quit PROC
+    call ExitProcess
+quit ENDP
+
+END main
